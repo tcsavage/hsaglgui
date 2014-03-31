@@ -17,7 +17,7 @@ cabal-version:       >=1.8
 library
   exposed-modules:     AGLGUI, AGLGUI.Raw
   -- other-modules:       
-  build-depends:       base ==4.6.*, OpenGL ==2.9.*
+  build-depends:       base ==4.6.*, OpenGL ==2.9.*, aeson ==0.7.*, unordered-containers ==0.2.*, vector ==0.10.*
   hs-source-dirs:      src
   Extra-Libraries:     aglgui
   Include-Dirs:        D:\aglgui

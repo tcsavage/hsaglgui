@@ -3,6 +3,7 @@
 module AGLGUI.Raw
 ( WVPtr
 , Callback
+, FunPtr
 , aglguiInit
 , aglguiQuit
 , aglguiUpdate
