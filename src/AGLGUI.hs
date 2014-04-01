@@ -20,8 +20,11 @@ import Control.Monad
 import Data.Aeson as Aeson
 import Data.IORef
 import qualified Data.HashMap.Strict as Map
+import Data.Scientific as Scientific
+import Data.Text.Foreign
 import qualified Data.Vector as Vector
 import Foreign.C
+import Foreign.Marshal.Alloc
 import Foreign.Marshal.Utils
 import Foreign.Ptr
 import System.IO.Unsafe (unsafePerformIO)
@@ -40,22 +43,47 @@ init name = withCString name aglguiInit
 
 quit :: IO ()
 quit = do
-	callbacks <- Map.elems <$> readIORef callbackMap
-	mapM freeCallback callbacks
-	aglguiQuit
+    callbacks <- Map.elems <$> readIORef callbackMap
+    mapM freeCallback callbacks
+    aglguiQuit
 
 update :: IO ()
 update = aglguiUpdate
 
+mkAesonValue :: JSValPtr -> IO Aeson.Value
+mkAesonValue valPtr = do
+    isBool <- toBool <$> aglguiJSValueIsBool valPtr
+    case isBool of
+        True -> Aeson.Bool . toBool <$> aglguiJSValueToBool valPtr
+        False -> do
+            isNumber <- toBool <$> aglguiJSValueIsNumber valPtr
+            case isNumber of
+                True -> Aeson.Number . fromFloatDigits <$> aglguiJSValueToDouble valPtr
+                False -> do
+                    isString <- toBool <$> aglguiJSValueIsString valPtr
+                    case isString of
+                        True -> do
+                            strLen <- fromIntegral <$> aglguiJSValueStringLength valPtr
+                            strPtr <- aglguiJSValueToString valPtr
+                            Aeson.String <$> fromPtr strPtr strLen
+                        False -> pure Aeson.Null  -- TODO
+
+mkAesonArray :: JSArrPtr -> IO Aeson.Array
+mkAesonArray arrPtr = do
+    len <- aglguiJSArrayLength arrPtr
+    case len > 0 of
+        True -> Vector.fromList <$> mapM (mkAesonValue <=< aglguiJSArrayAt arrPtr) [len-1, len-2 .. 0]
+        False -> pure Vector.empty
+
 apiReg :: String -> (Aeson.Array -> IO Aeson.Value) -> IO ()
 apiReg name callback = do
-	-- Create C callback, marshalling arguments and return value to/from Aeson types.
-	cbf <- mkCallback $ \argsPtr -> do
-		-- Temporary: ignore arguments, always return NULL pointer.
-		r <- callback Vector.empty
-		pure nullPtr
-	withCString name $ \cname -> aglguiApiReg cname cbf (fromBool False)
-	modifyIORef callbackMap (Map.insert name cbf)
+    -- Create C callback, marshalling arguments and return value to/from Aeson types.
+    cbf <- mkCallback $ \argsPtr -> do
+        -- Temporary: always return NULL pointer.
+        r <- callback =<< mkAesonArray argsPtr
+        pure nullPtr
+    withCString name $ \cname -> aglguiApiReg cname cbf (fromBool False)
+    --modifyIORef callbackMap (Map.insert name cbf)
 
 mkWebView :: Int -> Int -> IO WebView
 mkWebView w h = WebView <$> aglguiMakeWebView (fromIntegral w) (fromIntegral h)

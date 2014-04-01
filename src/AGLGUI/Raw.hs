@@ -2,6 +2,8 @@
 
 module AGLGUI.Raw
 ( WVPtr
+, JSValPtr
+, JSArrPtr
 , Callback
 , FunPtr
 , aglguiInit
@@ -16,14 +18,29 @@ module AGLGUI.Raw
 , aglguiInjectMouseMove
 , aglguiInjectMouseDown
 , aglguiInjectMouseUp
+, aglguiJSValueIsBool
+, aglguiJSValueIsNumber
+, aglguiJSValueIsString
+, aglguiJSValueIsArray
+, aglguiJSValueIsObject
+, aglguiJSValueIsNull
+, aglguiJSValueToBool
+, aglguiJSValueToDouble
+, aglguiJSValueToString
+, aglguiJSValueStringLength
+, aglguiJSArrayLength
+, aglguiJSArrayAt
 ) where
 
+import Data.Word
 import Foreign.C
 import Foreign.Ptr
 
 type WVPtr = Ptr ()
+type JSValPtr = Ptr ()
+type JSArrPtr = Ptr ()
 
-type Callback = Ptr () -> IO (Ptr ())
+type Callback = JSArrPtr -> IO JSValPtr
 
 -- | Callbacks created by mkCallback should be released using freeCallback when no longer required.
 foreign import ccall "wrapper"
@@ -61,3 +78,39 @@ foreign import ccall "aglguiInjectMouseDown"
 
 foreign import ccall "aglguiInjectMouseUp"
     aglguiInjectMouseUp :: WVPtr -> CInt -> IO ()
+
+foreign import ccall "aglguiJSValueIsBool"
+    aglguiJSValueIsBool :: JSValPtr -> IO CChar
+
+foreign import ccall "aglguiJSValueIsNumber"
+    aglguiJSValueIsNumber :: JSValPtr -> IO CChar
+
+foreign import ccall "aglguiJSValueIsString"
+    aglguiJSValueIsString :: JSValPtr -> IO CChar
+
+foreign import ccall "aglguiJSValueIsArray"
+    aglguiJSValueIsArray :: JSValPtr -> IO CChar
+
+foreign import ccall "aglguiJSValueIsObject"
+    aglguiJSValueIsObject :: JSValPtr -> IO CChar
+
+foreign import ccall "aglguiJSValueIsNull"
+    aglguiJSValueIsNull :: JSValPtr -> IO CChar
+
+foreign import ccall "aglguiJSValueToBool"
+    aglguiJSValueToBool :: JSValPtr -> IO CChar
+
+foreign import ccall "aglguiJSValueToDouble"
+    aglguiJSValueToDouble :: JSValPtr -> IO CDouble
+
+foreign import ccall "aglguiJSValueToString"
+    aglguiJSValueToString :: JSValPtr -> IO (Ptr Word16)
+
+foreign import ccall "aglguiJSValueStringLength"
+    aglguiJSValueStringLength :: JSValPtr -> IO CUInt
+
+foreign import ccall "aglguiJSArrayLength"
+    aglguiJSArrayLength :: JSArrPtr -> IO CUInt
+
+foreign import ccall "aglguiJSArrayAt"
+    aglguiJSArrayAt :: JSArrPtr -> CUInt -> IO JSValPtr
